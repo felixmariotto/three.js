@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webxr - immersive controls</title>
+		<meta charset=utf-8 />
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+	<body>
+
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> vr - interactive cubes
+		</div>
+
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+			import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+			import { Octree } from './jsm/math/Octree.js';
+			import { Capsule } from './jsm/math/Capsule.js';
+
+			import { VRButton } from './jsm/webxr/VRButton.js';
+			import { ImmersiveControls } from './jsm/controls/ImmersiveControls.js';
+
+			const clock = new THREE.Clock();
+
+			let camera, scene, renderer, playerSpace, controls;
+			let worldOctree, playerCollider, playerVelocity, playerDirection;
+			let playerOnFloor = false;
+
+			const GRAVITY = 30;
+
+			window.addEventListener( 'load', init );
+			window.addEventListener( 'resize', onWindowResize );
+
+			function init() {
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x88ccff );
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+				addLights();
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.xr.enabled = true;
+				renderer.shadowMap.enabled = true;
+				renderer.shadowMap.type = THREE.VSMShadowMap;
+
+				document.body.appendChild( renderer.domElement );
+				document.body.appendChild( VRButton.createButton( renderer ) );
+
+				worldOctree = new Octree();
+
+				playerCollider = new Capsule( new THREE.Vector3( 0, 0.35, 0 ), new THREE.Vector3( 0, 1, 0 ), 0.35 );
+
+				playerVelocity = new THREE.Vector3();
+				playerDirection = new THREE.Vector3();
+
+				loadMesh();
+
+				// controls
+
+				playerSpace = new THREE.Group();
+				scene.add( playerSpace );
+				playerSpace.add( camera );
+
+				controls = new ImmersiveControls( playerSpace, renderer );
+
+				controls.addEventListener( 'keydown', (e) => {
+
+					console.log( 'event: ', e );
+
+				});
+
+				controls.addEventListener( 'keyup', (e) => {
+
+					console.log( 'event: ', e );
+
+				});
+
+			}
+
+			// just add some lights to the scene, nothing crazy here
+
+			function addLights() {
+
+				const ambientlight = new THREE.AmbientLight( 0x6688cc );
+				scene.add( ambientlight );
+
+				const fillLight1 = new THREE.DirectionalLight( 0xff9999, 0.5 );
+				fillLight1.position.set( - 1, 1, 2 );
+				scene.add( fillLight1 );
+
+				const fillLight2 = new THREE.DirectionalLight( 0x8888ff, 0.2 );
+				fillLight2.position.set( 0, - 1, 0 );
+				scene.add( fillLight2 );
+
+				const directionalLight = new THREE.DirectionalLight( 0xffffaa, 1.2 );
+				directionalLight.position.set( - 5, 25, - 1 );
+				directionalLight.castShadow = true;
+				directionalLight.shadow.camera.near = 0.01;
+				directionalLight.shadow.camera.far = 500;
+				directionalLight.shadow.camera.right = 30;
+				directionalLight.shadow.camera.left = - 30;
+				directionalLight.shadow.camera.top	= 30;
+				directionalLight.shadow.camera.bottom = - 30;
+				directionalLight.shadow.mapSize.width = 1024;
+				directionalLight.shadow.mapSize.height = 1024;
+				directionalLight.shadow.radius = 4;
+				directionalLight.shadow.bias = - 0.00006;
+				scene.add( directionalLight );
+
+			}
+
+			// load the environment mesh that will be handed to worldOctree
+			// to be used as navigation mesh.
+			// We only start rendering ( and computing physics ) once this is done.
+
+			function loadMesh() {
+
+				const loader = new GLTFLoader().setPath( './models/gltf/' );
+
+				loader.load( 'collision-world.glb', ( gltf ) => {
+
+					scene.add( gltf.scene );
+
+					worldOctree.fromGraphNode( gltf.scene );
+
+					gltf.scene.traverse( child => {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+
+							if ( child.material.map ) {
+
+								child.material.map.anisotropy = 8;
+
+							}
+
+						}
+
+					} );
+
+					animate();
+
+				} );
+
+			}
+
+			// intersect the player against the world, and move them out of collision.
+			// also reduce the player velocity if they are running in a wall.
+
+			function playerCollisions() {
+
+				const result = worldOctree.capsuleIntersect( playerCollider );
+
+				playerOnFloor = false;
+
+				if ( result ) {
+
+					playerOnFloor = result.normal.y > 0;
+
+					if ( ! playerOnFloor ) {
+
+						playerVelocity.addScaledVector( result.normal, - result.normal.dot( playerVelocity ) );
+
+					}
+
+					playerCollider.translate( result.normal.multiplyScalar( result.depth ) );
+
+				}
+
+			}
+
+			// add gravity and input to player velocity,
+			// then add their velocity to their position.
+
+			function updatePlayer( deltaTime ) {
+
+				playerVelocity.z = controls.direction.y * -4;
+				playerVelocity.x = controls.direction.x * 4;
+
+				if ( playerOnFloor ) {
+
+					const damping = Math.exp( - 3 * deltaTime ) - 1;
+					playerVelocity.addScaledVector( playerVelocity, damping );
+
+				} else {
+
+					playerVelocity.y -= GRAVITY * deltaTime;
+
+				}
+
+				const deltaPosition = playerVelocity.clone().multiplyScalar( deltaTime );
+				playerCollider.translate( deltaPosition );
+
+				playerCollisions();
+
+				playerSpace.position.copy( playerCollider.end );
+
+			}
+
+			//
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				renderer.setAnimationLoop( render );
+
+			}
+
+			function render() {
+
+				const deltaTime = Math.min( 0.1, clock.getDelta() );
+
+				updatePlayer( deltaTime );
+
+				controls.update( deltaTime );
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
+</html>
