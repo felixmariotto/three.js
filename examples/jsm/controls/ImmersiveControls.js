@@ -1,23 +1,30 @@
 import {
 	EventDispatcher,
-	Vector2
+	Vector2,
+	Vector3,
+	Group
 } from '../../../build/three.module.js';
 
-const ImmersiveControls = function ( object, renderer ) {
+const ImmersiveControls = function ( camera, renderer ) {
 
-	this.object = object;
+	// this.camera = camera;
 	this.domElement = renderer.domElement;
 
 	// API
 
 	this.enabled = true;
 	this.direction = new Vector2();
+	this.viewDirection = camera.getWorldDirection( new Vector3() );
+	this.viewerSpace = new Group();
+
+	this.viewerSpace.add( camera );
+	camera.position.y = 1.5;
 
 	// INTERNALS
 
 	const scope = this;
 
-	const viewHalfSize = new Vector2();
+	const domElemSize = new Vector2();
 	const mouse = new Vector2();
 
 	const keyDirVector = new Vector2();
@@ -30,9 +37,26 @@ const ImmersiveControls = function ( object, renderer ) {
 		left: false
 	};
 
+	let xrSession;
+	// let referenceSpace;
+
+	renderer.xr.addEventListener( 'sessionstart', (e) => {
+
+		xrSession = renderer.xr.getSession();
+
+		// referenceSpace = renderer.xr.getReferenceSpace()
+
+	});
+
+	renderer.xr.addEventListener( 'sessionend', (e) => {
+
+		xrSession = null;
+
+	});
+
 	// XR INPUT
 
-	const inputs = [];
+	const xrInputs = [];
 
 	for ( let i=0 ; i<2 ; i++ ) {
 
@@ -40,11 +64,7 @@ const ImmersiveControls = function ( object, renderer ) {
 			inputGroup: renderer.xr.getController( i )
 		};
 
-		inputs.push( input );
-
-		input.inputGroup.addEventListener( 'selectend', (e) => {
-			console.log('test', e)
-		})
+		xrInputs.push( input );
 
 		input.inputGroup.addEventListener( 'connected', (e) => {
 
@@ -194,9 +214,14 @@ const ImmersiveControls = function ( object, renderer ) {
 				fireDirectionChange( { inputProfile: 'keyboard' } );
 				break;
 
-		}
+			// Enter and Space keys emulate controllers buttons
 
-		// fireKeyDown( { inputProfile: 'keyboard' } );
+			case 'Enter':
+			case 'Space':
+				fireKeyDown( { inputProfile: 'keyboard' } );
+				break;
+
+		}
 
 	}
 
@@ -234,9 +259,14 @@ const ImmersiveControls = function ( object, renderer ) {
 				fireDirectionChange( { inputProfile: 'keyboard' } );
 				break;
 
-		}
+			// Enter and Space keys emulate controllers buttons
 
-		// fireKeyUp( { inputProfile: 'keyboard' } );
+			case 'Enter':
+			case 'Space':
+				fireKeyUp( { inputProfile: 'keyboard' } );
+				break;
+
+		}
 
 	}
 
@@ -245,6 +275,20 @@ const ImmersiveControls = function ( object, renderer ) {
 		keyDirVector.y = ( keysDirection.up ? 1 : 0 ) + ( keysDirection.down ? -1 : 0 );
 		keyDirVector.x = ( keysDirection.right ? 1 : 0 ) + ( keysDirection.left ? -1 : 0 );
 		keyDirVector.normalize();
+
+	}
+
+	// MOUSE INPUT
+
+	window.addEventListener( 'mousemove', onMouseMove );
+
+	function onMouseMove ( event ) {
+
+		mouse.x = event.pageX - scope.domElement.offsetLeft - domElemSize.x;
+		mouse.y = event.pageY - scope.domElement.offsetTop - domElemSize.y;
+
+		mouse.x = ( mouse.x / domElemSize.x ) * 2 + 1;
+		mouse.y = ( mouse.y / domElemSize.y ) * -2 - 1;
 
 	}
 
@@ -291,27 +335,65 @@ const ImmersiveControls = function ( object, renderer ) {
 
 	this.handleResize = function () {
 
-		if ( this.domElement === document ) {
-
-			viewHalfSize.x = window.innerWidth;
-			viewHalfSize.z = window.innerHeight;
-
-		} else {
-
-			viewHalfSize.x = this.domElement.offsetWidth;
-			viewHalfSize.z = this.domElement.offsetHeight;
-
-		}
+		domElemSize.x = this.domElement.offsetWidth;
+		domElemSize.y = this.domElement.offsetHeight;
 
 	};
 
 	//
 
+	const cross = new Vector3();
+
 	this.update = function ( deltaTime ) {
 
-		inputs.forEach( input => input.checkState() );
+		xrInputs.forEach( input => input.checkState() );
+
+		if ( xrSession ) {
+
+			const arrayCamera = renderer.xr.getCamera( camera );
+
+			arrayCamera.getWorldDirection( this.viewDirection );
+
+			this.viewDirection.normalize();
+
+		} else {
+
+			// update viewDirection according to mouse position on dom element
+
+			cross.crossVectors( this.viewDirection, camera.up );
+			cross.normalize();
+
+			this.viewDirection.addScaledVector( cross, Math.pow( mouse.x, 3 ) * 0.045 );
+
+			cross.crossVectors( cross, this.viewDirection );
+
+			this.viewDirection.addScaledVector( cross, Math.pow( mouse.y, 3 ) * 0.045 );
+
+			this.viewDirection.normalize();
+
+			// clamp to avoid antipodal points up and down the camera
+
+			this.viewDirection.y = Math.min( 0.8, Math.max( -0.8, this.viewDirection.y ) );
+
+			this.viewDirection.normalize();
+
+			// rotate camera
+
+			this.viewerSpace.localToWorld( this.viewDirection );
+			this.viewDirection.add( camera.position );
+
+			camera.lookAt( this.viewDirection );
+
+			this.viewDirection.sub( camera.position );
+			this.viewerSpace.worldToLocal( this.viewDirection );
+
+		}
 
 	}
+
+	//
+
+	this.handleResize();
 
 };
 
