@@ -38,13 +38,14 @@
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0x88ccff );
 
-				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 				addLights();
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.outputEncoding = THREE.sRGBEncoding;
 				renderer.xr.enabled = true;
 				renderer.shadowMap.enabled = true;
 				renderer.shadowMap.type = THREE.VSMShadowMap;
@@ -75,6 +76,16 @@
 
 				});
 
+				controls.addEventListener( 'clickstart', (e) => {
+					console.log( 'event: ', e );
+				});
+				controls.addEventListener( 'clickend', (e) => {
+					console.log( 'event: ', e );
+				});
+
+				controls.mouseMovePower = 0.42;
+				controls.mouseClamp = 0.6;
+
 				scene.add( controls.viewerSpace );
 
 			}
@@ -83,15 +94,9 @@
 
 			function addLights() {
 
-				const amblight = new THREE.AmbientLight( 0x6688cc );
+				const amblight = new THREE.AmbientLight( 0xa3adff, 0.25 );
 
-				const fillLight1 = new THREE.DirectionalLight( 0xff9999, 0.5 );
-				fillLight1.position.set( - 1, 1, 2 );
-
-				const fillLight2 = new THREE.DirectionalLight( 0x8888ff, 0.2 );
-				fillLight2.position.set( 0, - 1, 0 );
-
-				const dirLight = new THREE.DirectionalLight( 0xffffaa, 1.2 );
+				const dirLight = new THREE.DirectionalLight( 0xfeffde, 0.8 );
 				dirLight.position.set( - 5, 25, - 1 );
 				dirLight.castShadow = true;
 				dirLight.shadow.camera.near = 0.01;
@@ -105,7 +110,7 @@
 				dirLight.shadow.radius = 4;
 				dirLight.shadow.bias = - 0.00006;
 
-				scene.add( amblight, fillLight1, fillLight2, dirLight );
+				scene.add( amblight, dirLight );
 
 			}
 
@@ -186,14 +191,14 @@
 			function updatePlayer( deltaTime ) {
 
 				// camera target * input's "forward" power
-				playerVelocity.x = controls.viewDirection.x * controls.direction.y * 5;
-				playerVelocity.z = controls.viewDirection.z * controls.direction.y * 5;
+				playerVelocity.x = controls.viewDirection.x * controls.axes.y * 5;
+				playerVelocity.z = controls.viewDirection.z * controls.axes.y * 5;
 
 				// add camera target * input's "side" power
 				crossVector.copy( controls.viewDirection );
 				crossVector.cross( camera.up );
-				playerVelocity.x += crossVector.x * controls.direction.x * 5;
-				playerVelocity.z += crossVector.z * controls.direction.x * 5;
+				playerVelocity.x += crossVector.x * controls.axes.x * 5;
+				playerVelocity.z += crossVector.z * controls.axes.x * 5;
 
 				if ( playerOnFloor ) {
 

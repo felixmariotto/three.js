@@ -4,6 +4,8 @@ import {
 	Vector3,
 	Group
 } from '../../../build/three.module.js';
+import { XRControllerModelFactory } from '../webxr/XRControllerModelFactory.js';
+import { XRHandModelFactory } from '../webxr/XRHandModelFactory.js';
 
 const ImmersiveControls = function ( camera, renderer ) {
 
@@ -13,12 +15,10 @@ const ImmersiveControls = function ( camera, renderer ) {
 	// API
 
 	this.enabled = true;
-	this.direction = new Vector2();
+	this.mouseMovePower = 0.45;
+	this.mouseClamp = 0.8;
+	this.axes = new Vector2();
 	this.viewDirection = camera.getWorldDirection( new Vector3() );
-	this.viewerSpace = new Group();
-
-	this.viewerSpace.add( camera );
-	camera.position.y = 1.5;
 
 	// INTERNALS
 
@@ -26,6 +26,9 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 	const domElemSize = new Vector2();
 	const mouse = new Vector2();
+	const crossVec = new Vector3();
+
+	const controllerModelFactory = new XRControllerModelFactory();
 
 	const keyDirVector = new Vector2();
 	const axesDirVector = new Vector2();
@@ -43,7 +46,6 @@ const ImmersiveControls = function ( camera, renderer ) {
 	renderer.xr.addEventListener( 'sessionstart', (e) => {
 
 		xrSession = renderer.xr.getSession();
-
 		// referenceSpace = renderer.xr.getReferenceSpace()
 
 	});
@@ -60,34 +62,68 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 	for ( let i=0 ; i<2 ; i++ ) {
 
-		let input = {
-			inputGroup: renderer.xr.getController( i )
-		};
+		const input = {};
 
 		xrInputs.push( input );
 
-		input.inputGroup.addEventListener( 'connected', (e) => {
+		input.handleEvent = function ( event, eventName ) {
 
-			// https://www.w3.org/TR/webxr/#xrinputsource-interface
-			input.inputSource = e.data;
+			if ( event.inputSource == this.inputSource ) {
 
-			input.gamepad = e.data.gamepad;
+				fireEvent( {
+					type: eventName,
+					handedness: this.handedness,
+					inputProfile: 'controller'
+				} );
 
-			input.hand = e.data.hand;
+			}
 
-			input.handedness = e.data.handedness;
+		}
+
+		input.setupSource = function ( inputSource ) {
+
+			this.inputSource = inputSource;
+			this.gamepad = inputSource.gamepad;
+			this.hand = inputSource.hand;
+			this.handedness = inputSource.handedness;
+
+			xrSession.addEventListener( 'select', ( event ) => {
+				this.handleEvent( event, 'click' );
+			} );
+
+			xrSession.addEventListener( 'selectstart', ( event ) => {
+				this.handleEvent( event, 'clickstart' );
+			} );
+
+			xrSession.addEventListener( 'selectend', ( event ) => {
+				this.handleEvent( event, 'clickend' );
+			} );
+
+		}
+
+		input.removeSource = function () {
+
+			this.inputSource = null;
+			this.gamepad = null;
+			this.hand = null;
+			this.handedness = null;
+
+		}
+
+		input.rayGroup = renderer.xr.getController( i );
+		input.gripGroup = renderer.xr.getControllerGrip( i );
+
+		input.gripGroup.add( controllerModelFactory.createControllerModel( input.gripGroup ) );
+
+		input.rayGroup.addEventListener( 'connected', (e) => {
+
+			input.setupSource( e.data );
 
 		} );
 
-		input.inputGroup.addEventListener( 'disconnected', () => {
+		input.rayGroup.addEventListener( 'disconnected', () => {
 
-			input.inputSource = null;
-
-			input.gamepad = null;
-
-			input.hand = null;
-
-			input.handedness = null;
+			input.removeSource();
 
 		} );
 
@@ -126,7 +162,7 @@ const ImmersiveControls = function ( camera, renderer ) {
 					axesDirVector.x = this.gamepad.axes[2];
 					axesDirVector.y = this.gamepad.axes[3] * -1;
 
-					fireDirectionChange( { inputProfile: 'controller' } );
+					fireAxesChange( { inputProfile: 'controller' } );
 
 					this.gamepad.oldState.axes[ 0 ] = this.gamepad.axes[ 0 ];
 					this.gamepad.oldState.axes[ 1 ] = this.gamepad.axes[ 1 ];
@@ -147,21 +183,25 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 					if ( changedBtn.pressed ) {
 
-						fireKeyDown( {
-							handedness: this.handedness,
-							inputProfile: 'controller'
+						fireEvent( {
+							type: 'keydown',
+							inputProfile: 'controller',
+							handedness: this.handedness
 						} );
 
 					} else {
 
-						fireKeyUp( {
-							handedness: this.handedness,
-							inputProfile: 'controller'
+						fireEvent( {
+							type: 'keyup',
+							inputProfile: 'controller',
+							handedness: this.handedness
 						} );
 
 					}
 
-					const oldButton = this.gamepad.oldState.buttons[ this.gamepad.buttons.indexOf( changedBtn ) ];
+					const idx = this.gamepad.buttons.indexOf( changedBtn );
+
+					const oldButton = this.gamepad.oldState.buttons[ idx ];
 
 					oldButton.pressed = changedBtn.pressed;
 
@@ -184,41 +224,44 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 		switch ( event.code ) {
 
-			// WASD/Arrows update the direction and fires a 'directionchange' event
+			// WASD/Arrows update the axes and fires a 'axeschange' event
 
 			case 'ArrowUp':
 			case 'KeyW':
 				keysDirection.up = true;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			case 'ArrowLeft':
 			case 'KeyA':
 				keysDirection.left = true;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			case 'ArrowDown':
 			case 'KeyS':
 				keysDirection.down = true;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			case 'ArrowRight':
 			case 'KeyD':
 				keysDirection.right = true;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			// Enter and Space keys emulate controllers buttons
 
 			case 'Enter':
 			case 'Space':
-				fireKeyDown( { inputProfile: 'keyboard' } );
+				fireEvent( {
+					type: 'keydown',
+					inputProfile: 'keyboard'
+				} );
 				break;
 
 		}
@@ -229,41 +272,44 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 		switch ( event.code ) {
 
-			// WASD/Arrows update the direction and fires a 'directionchange' event
+			// WASD/Arrows update the axes and fires a 'axeschange' event
 
 			case 'ArrowUp':
 			case 'KeyW':
 				keysDirection.up = false;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			case 'ArrowLeft':
 			case 'KeyA':
 				keysDirection.left = false;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			case 'ArrowDown':
 			case 'KeyS':
 				keysDirection.down = false;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			case 'ArrowRight':
 			case 'KeyD':
 				keysDirection.right = false;
 				computeKeyboardDir();
-				fireDirectionChange( { inputProfile: 'keyboard' } );
+				fireAxesChange( { inputProfile: 'keyboard' } );
 				break;
 
 			// Enter and Space keys emulate controllers buttons
 
 			case 'Enter':
 			case 'Space':
-				fireKeyUp( { inputProfile: 'keyboard' } );
+				fireEvent( {
+					type: 'keyup',
+					inputProfile: 'keyboard'
+				} );
 				break;
 
 		}
@@ -278,11 +324,14 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 	}
 
-	// MOUSE INPUT
+	// POINTER INPUT
 
-	window.addEventListener( 'mousemove', onMouseMove );
+	window.addEventListener( 'pointermove', onPointerMove );
+	window.addEventListener( 'click', onMouseClick );
+	window.addEventListener( 'pointerdown', onPointerDown );
+	window.addEventListener( 'pointerup', onPointerUp );
 
-	function onMouseMove ( event ) {
+	function onPointerMove ( event ) {
 
 		mouse.x = event.pageX - scope.domElement.offsetLeft - domElemSize.x;
 		mouse.y = event.pageY - scope.domElement.offsetTop - domElemSize.y;
@@ -292,46 +341,75 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 	}
 
-	// EVENTS
+	function onMouseClick ( event ) {
 
-	function fireKeyDown ( parameters ) {
-
-		const event = Object.assign( {
-			type: 'keydown'
-		}, parameters );
-
-		scope.dispatchEvent( event );
+		fireEvent( {
+			type: 'click',
+			inputProfile: 'pointer'
+		} );
 
 	}
 
-	function fireKeyUp ( parameters ) {
+	function onPointerDown ( event ) {
 
-		const event = Object.assign( {
-			type: 'keyup'
-		}, parameters );
-
-		scope.dispatchEvent( event );
+		fireEvent( {
+			type: 'clickstart',
+			inputProfile: 'pointer'
+		} );
 
 	}
 
-	function fireDirectionChange ( parameters ) {
+	function onPointerUp ( event ) {
 
-		// compute the ImmersiveControls.direction, that the user wants to read.
+		fireEvent( {
+			type: 'clickend',
+			inputProfile: 'pointer'
+		} );
 
-		scope.direction.copy( keyDirVector );
-		scope.direction.add( axesDirVector );
+	}
+
+	// STANDARD EVENTS
+
+	function fireEvent( eventParams ) {
+
+		if ( !eventParams.handedness ) eventParams.handedness = null;
+
+		scope.dispatchEvent( eventParams );
+
+	}
+
+	function fireAxesChange ( eventParams ) {
+
+		// compute the ImmersiveControls.axes, that the user wants to read.
+
+		scope.axes.copy( keyDirVector );
+		scope.axes.add( axesDirVector );
 
 		// fire the event
 
-		const event = Object.assign( {
-			type: 'directionchange'
-		}, parameters );
+		eventParams.type = 'axeschange';
 
-		scope.dispatchEvent( event );
+		scope.dispatchEvent( eventParams );
 
 	}
 
 	// MISC
+
+	this.setViewerSpace = ( group ) => {
+
+		this.viewerSpace = group;
+		this.viewerSpace.add( camera );
+		camera.position.y = 1.5;
+
+		xrInputs.forEach( (input) => {
+
+			this.viewerSpace.add( input.rayGroup, input.gripGroup );
+
+		} );
+
+	}
+
+	this.setViewerSpace( new Group() );
 
 	this.handleResize = function () {
 
@@ -341,8 +419,6 @@ const ImmersiveControls = function ( camera, renderer ) {
 	};
 
 	//
-
-	const cross = new Vector3();
 
 	this.update = function ( deltaTime ) {
 
@@ -360,20 +436,20 @@ const ImmersiveControls = function ( camera, renderer ) {
 
 			// update viewDirection according to mouse position on dom element
 
-			cross.crossVectors( this.viewDirection, camera.up );
-			cross.normalize();
+			crossVec.crossVectors( this.viewDirection, camera.up );
+			crossVec.normalize();
 
-			this.viewDirection.addScaledVector( cross, Math.pow( mouse.x, 3 ) * 0.045 );
+			this.viewDirection.addScaledVector( crossVec, Math.pow( mouse.x, 3 ) * this.mouseMovePower * 0.1 );
 
-			cross.crossVectors( cross, this.viewDirection );
+			crossVec.crossVectors( crossVec, this.viewDirection );
 
-			this.viewDirection.addScaledVector( cross, Math.pow( mouse.y, 3 ) * 0.045 );
+			this.viewDirection.addScaledVector( crossVec, Math.pow( mouse.y, 3 ) * this.mouseMovePower * 0.1 );
 
 			this.viewDirection.normalize();
 
 			// clamp to avoid antipodal points up and down the camera
 
-			this.viewDirection.y = Math.min( 0.8, Math.max( -0.8, this.viewDirection.y ) );
+			this.viewDirection.y = Math.min( this.mouseClamp, Math.max( -this.mouseClamp, this.viewDirection.y ) );
 
 			this.viewDirection.normalize();
 
