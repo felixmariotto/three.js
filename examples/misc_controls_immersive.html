@@ -135,6 +135,8 @@
 
 					worldOctree.fromGraphNode( gltf.scene );
 
+					controls.navigationObject = gltf.scene;
+
 					gltf.scene.traverse( child => {
 
 						if ( child.isMesh ) {
