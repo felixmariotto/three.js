@@ -37,7 +37,7 @@
 			const trucks = [];
 			const impostors = [];
 
-			const trucksNumber = 1;
+			const trucksNumber = 1000;
 			const sceneWidth = 200;
 
 			init();
@@ -47,17 +47,16 @@
 
 				// basic setup
 
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, sceneWidth );
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, sceneWidth * 2 );
 				camera.position.set( 15, 5, 15 );
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xf0f0f0 );
-				scene.fog = new THREE.Fog( new THREE.Color( 0xf0f0f0 ), sceneWidth / 4, sceneWidth );
+				// scene.fog = new THREE.Fog( new THREE.Color( 0xf0f0f0 ), sceneWidth / 4, sceneWidth );
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.shadowMap.enabled = true;
 				document.body.appendChild( renderer.domElement );
 
 				controls = new OrbitControls( camera, renderer.domElement );
@@ -73,9 +72,6 @@
 				scene.add( light );
 
 				const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-				directionalLight.castShadow = true;
-				directionalLight.shadow.mapSize.width = 2048;
-				directionalLight.shadow.mapSize.height = 2048;
 				directionalLight.position.set( - 1, 1.75, -1 );
 
 				scene.add( directionalLight );
@@ -90,7 +86,6 @@
 				});
 
 				const planeMesh = new THREE.Mesh( planeGeometry, planeMaterial );
-				planeMesh.receiveShadow = true;
 
 				scene.add( planeMesh );
 
@@ -102,27 +97,21 @@
 
 					model = gltf.scene;
 
-					model.traverse( (child) => {
-
-						child.castShadow = true;
-
-					} );
-
 					for ( let i=0 ; i<trucksNumber ; i++ ) {
 
 						const truck = model.clone();
 
-						/*
 						truck.position.set(
 							Math.random() * sceneWidth * 2 - sceneWidth,
 							0,
 							Math.random() * sceneWidth * 2 - sceneWidth
 						);
-						*/
+
+						truck.direction = Math.random() * 0.2 + 0.3;
 
 						scene.add( truck );
 
-						// trucks.push( truck );
+						trucks.push( truck );
 
 						const impostor = new Impostor( truck, camera, renderer, scene );
 						
@@ -131,30 +120,6 @@
 					}
 
 				} );
-
-				// gui
-
-				const effectController = {
-					focalLength: 15,
-					fstop: 2.8,
-					showFocus: false,
-					focalDepth: 3,
-				};
-
-				const matChanger = function ( ) {
-					console.log( effectController[ 'focalDepth' ] )
-				};
-
-				//
-
-				const gui = new GUI();
-
-				gui.add( effectController, 'focalLength', 1, 135, 0.01 ).onChange( matChanger );
-				gui.add( effectController, 'fstop', 1.8, 22, 0.01 ).onChange( matChanger );
-				gui.add( effectController, 'focalDepth', 0.1, 100, 0.001 ).onChange( matChanger );
-				gui.add( effectController, 'showFocus', true ).onChange( matChanger );
-
-				matChanger();
 
 			}
 
@@ -173,9 +138,13 @@
 
 				trucks.forEach( (truck) => {
 
-					truck.position.x += 0.4;
+					truck.position.x += truck.direction;
 
-					if ( truck.position.x > 200 ) truck.position.x = -200;
+					if ( truck.position.x > sceneWidth ) {
+
+						truck.position.x = -sceneWidth;
+
+					}
 
 				} );
 

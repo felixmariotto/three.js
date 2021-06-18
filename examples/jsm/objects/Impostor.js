@@ -25,7 +25,7 @@ class Impostor extends Sprite {
 
 	constructor( object3D, camera, renderer, scene ) {
 
-		const DEFAULT_TEXTURE_SIZE = 128;
+		const DEFAULT_TEXTURE_SIZE = 512;
 
 		const renderTarget = new WebGLRenderTarget(
 			DEFAULT_TEXTURE_SIZE,
@@ -45,7 +45,7 @@ class Impostor extends Sprite {
 		this.type = 'Impostor';
 		this.redrawInterval = null; // in ms, skipped if null.
 		this.impostureDistance = 70; // world distance.
-		this.maxAngle = 0.2;
+		this.maxAngle = 0.5;
 		this.camera = camera;
 		this.renderer = renderer;
 		this.scene = scene;
@@ -218,9 +218,9 @@ class Impostor extends Sprite {
 		// render the texture.
 
 		this.renderer.setRenderTarget( this.renderTarget );
-		console.time('time');
+		// console.time('time');
 		this.renderer.render( this.scene, this.camera );
-		console.timeEnd('time');
+		// console.timeEnd('time');
 
 		// undo changes made for the texture render.
 
