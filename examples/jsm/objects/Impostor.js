@@ -9,7 +9,8 @@ import {
 	WebGLRenderTarget,
 	RGBAFormat,
 	NearestFilter,
-	MathUtils
+	MathUtils,
+	AmbientLight
 } from '../../../build/three.module.js';
 
 // TODO :
@@ -20,6 +21,8 @@ const _v2 = new Vector3();
 const _m1 = new Matrix4();
 const _m2 = new Matrix4();
 const _q = new Quaternion();
+
+const light = new AmbientLight( 0xffffff, 2 );
 
 class Impostor extends Sprite {
 
@@ -63,6 +66,9 @@ class Impostor extends Sprite {
 		this._boundingBox = new Box3();
 		this._boundingSphere = new Sphere();
 		this._boundingSphereOffset = new Vector3();
+
+		// test
+		this.redraw();
 
 	}
 
@@ -170,6 +176,7 @@ class Impostor extends Sprite {
 		// set the camera on layer 31 to render only the forged object,
 		// then set it again on its initial value.
 
+		/*
 		const camMask = this.camera.layers.mask;
 		this.camera.layers.set( 31 );
 
@@ -179,7 +186,10 @@ class Impostor extends Sprite {
 		this.scene.traverse( (child) => {
 			if ( child.isLight ) child.layers.enable( 31 );
 		} );
+		*/
 
+		this.attachLights( this.scene );
+		
 		// make scene background transparent.
 
 		const sceneBackground = this.scene.background;
@@ -217,10 +227,14 @@ class Impostor extends Sprite {
 
 		// render the texture.
 
+		// this._forged.add( light );
+
 		this.renderer.setRenderTarget( this.renderTarget );
 		// console.time('time');
-		this.renderer.render( this.scene, this.camera );
+		this.renderer.render( this._forged, this.camera );
 		// console.timeEnd('time');
+
+		// this._forged.remove( light );
 
 		// undo changes made for the texture render.
 
@@ -230,16 +244,18 @@ class Impostor extends Sprite {
 		this.visible = this._isForging;
 
 		this.scene.fog = fog;
-		this.camera.layers.mask = camMask;
+		// this.camera.layers.mask = camMask;
 		this.scene.background = sceneBackground;
 
 		this.camera.quaternion.copy( _q );
 
-		this._forged.traverse( child => child.layers.disable( 31 ) );
+		// this._forged.traverse( child => child.layers.disable( 31 ) );
 
 		this.camera.fov = camFov;
 		this.camera.aspect = camAspect;
 		this.camera.updateProjectionMatrix();
+
+		this.detachLights();
 
 		// record the last draw angle, so we can know
 		// when the current view angle exceeds the maximum.
@@ -267,6 +283,44 @@ class Impostor extends Sprite {
 
 		this._boundingSphereOffset.copy( this._boundingSphere.center );
 		this._boundingSphereOffset.sub( _v2 );
+
+	}
+
+	//
+
+	attachLights( source ) {
+
+		for (var i = source.children.length - 1; i >= 0; i--) {
+			
+			this.attachLights( source.children[i] );
+
+			if ( source.children[i].isLight ) {
+
+				this._forged.attach( source.children[i] );
+
+			}
+
+		}
+
+	}
+
+	//
+
+	detachLights( source ) {
+
+		source = source || this._forged;
+
+		for (var i = source.children.length - 1; i >= 0; i--) {
+
+			this.detachLights( source.children[i] );
+
+			if ( source.children[i].isLight ) {
+
+				this.scene.attach( source.children[i] );
+
+			}
+
+		}
 
 	}
 
