@@ -203,6 +203,7 @@ class Impostor extends Mesh {
 		const targetAngle = 2 * Math.atan( this._boundingSphere.radius / distance );
 
 		this.camera.fov = MathUtils.radToDeg( targetAngle );
+		this.camera.aspect = 1;
 
 		this.camera.updateProjectionMatrix();
 
@@ -216,14 +217,8 @@ class Impostor extends Mesh {
 
 		// render the texture.
 
-		// this._forged.add( light );
-
 		this.renderer.setRenderTarget( this.renderTarget );
-		// console.time('time');
 		this.renderer.render( this._forged, this.camera );
-		// console.timeEnd('time');
-
-		// this._forged.remove( light );
 
 		// undo changes made for the texture render.
 
