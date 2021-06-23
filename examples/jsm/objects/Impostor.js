@@ -9,7 +9,8 @@ import {
 	NearestFilter,
 	MathUtils,
 	PlaneGeometry,
-	MeshBasicMaterial
+	MeshBasicMaterial,
+	DoubleSide
 } from '../../../build/three.module.js';
 
 // TODO :
@@ -40,7 +41,8 @@ class Impostor extends Mesh {
 		super( geometry, new MeshBasicMaterial( {
 			map: renderTarget.texture,
 			color: 0xffffff,
-			transparent: true
+			transparent: true,
+			// side: DoubleSide
 		} ) );
 
 		this.scale.set( 10, 10, 1 );
@@ -267,10 +269,14 @@ class Impostor extends Mesh {
 
 		// make the plane orient towards the camera
 
-		this.camera.updateWorldMatrix( true, false );
-		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
+		
 
-		this.lookAt( _v1 );
+		setTimeout( () => {
+			this.camera.updateWorldMatrix( true, false );
+		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
+			// this.lookAt( 0, 0, 0 );
+			this.lookAt( _v1 );
+		}, 10 )
 
 	}
 

@@ -37,7 +37,7 @@
 			const trucks = [];
 			const impostors = [];
 
-			const trucksNumber = 1000;
+			const trucksNumber = 2000;
 			const sceneWidth = 200;
 
 			init();
@@ -47,12 +47,12 @@
 
 				// basic setup
 
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, sceneWidth * 2 );
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, sceneWidth * 10 );
 				camera.position.set( 15, 5, 15 );
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xf0f0f0 );
-				scene.fog = new THREE.Fog( new THREE.Color( 0xf0f0f0 ), sceneWidth / 4, sceneWidth );
+				// scene.fog = new THREE.Fog( new THREE.Color( 0xf0f0f0 ), sceneWidth / 4, sceneWidth );
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
