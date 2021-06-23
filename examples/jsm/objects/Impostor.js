@@ -1,15 +1,15 @@
 import {
-	Sprite,
+	Mesh,
 	Vector3,
 	Box3,
 	Sphere,
 	Quaternion,
-	SpriteMaterial,
 	WebGLRenderTarget,
 	RGBAFormat,
 	NearestFilter,
 	MathUtils,
-	AmbientLight
+	PlaneGeometry,
+	MeshBasicMaterial
 } from '../../../build/three.module.js';
 
 // TODO :
@@ -19,7 +19,7 @@ const _v1 = new Vector3();
 const _v2 = new Vector3();
 const _q = new Quaternion();
 
-class Impostor extends Sprite {
+class Impostor extends Mesh {
 
 	constructor( object3D, camera, renderer, scene ) {
 
@@ -35,7 +35,13 @@ class Impostor extends Sprite {
 			}
 		);
 
-		super( new SpriteMaterial( { map: renderTarget.texture, color: 0xffffff } ) );
+		const geometry = new PlaneGeometry( 1, 1 );
+
+		super( geometry, new MeshBasicMaterial( {
+			map: renderTarget.texture,
+			color: 0xffffff,
+			transparent: true
+		} ) );
 
 		this.scale.set( 10, 10, 1 );
 
@@ -116,7 +122,7 @@ class Impostor extends Sprite {
 
 		}
 
-		// move the sprite at the forged object position
+		// move the impostor at the forged object position
 
 		this.position
 		.copy( _v2 )
@@ -254,7 +260,7 @@ class Impostor extends Sprite {
 		this.lastRedrawDate = Date.now();
 
 		// we record the offset between the bounding sphere center and
-		// the forged object position, because the impostor sprite is centered
+		// the forged object position, because the impostor plane is centered
 		// on the object geometry and we want to move the impostor each from
 		// to match the object position.
 
@@ -263,6 +269,13 @@ class Impostor extends Sprite {
 
 		this._boundingSphereOffset.copy( this._boundingSphere.center );
 		this._boundingSphereOffset.sub( _v2 );
+
+		// make the plane orient towards the camera
+
+		this.camera.updateWorldMatrix( true, false );
+		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
+
+		this.lookAt( _v1 );
 
 	}
 
