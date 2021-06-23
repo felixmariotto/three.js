@@ -52,7 +52,7 @@
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xf0f0f0 );
-				// scene.fog = new THREE.Fog( new THREE.Color( 0xf0f0f0 ), sceneWidth / 4, sceneWidth );
+				scene.fog = new THREE.Fog( new THREE.Color( 0xf0f0f0 ), sceneWidth / 4, sceneWidth );
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
@@ -68,13 +68,13 @@
 
 				// lights
 
-				const light = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
-				scene.add( light );
-
+				const hemLight = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
 				const directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
 				directionalLight.position.set( - 1, 1.75, -1 );
 
-				scene.add( directionalLight );
+				scene.add( hemLight, directionalLight );
+
+				const lights = [ hemLight, directionalLight ];
 
 				// ground plane
 
@@ -114,7 +114,8 @@
 						trucks.push( truck );
 
 						const impostor = new Impostor( truck, camera, renderer, scene );
-						
+						impostor.lights = lights;
+
 						impostors.push( impostor );
 
 					}

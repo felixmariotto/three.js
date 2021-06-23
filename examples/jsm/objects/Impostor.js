@@ -1,7 +1,6 @@
 import {
 	Sprite,
 	Vector3,
-	Matrix4,
 	Box3,
 	Sphere,
 	Quaternion,
@@ -18,11 +17,7 @@ import {
 
 const _v1 = new Vector3();
 const _v2 = new Vector3();
-const _m1 = new Matrix4();
-const _m2 = new Matrix4();
 const _q = new Quaternion();
-
-const light = new AmbientLight( 0xffffff, 2 );
 
 class Impostor extends Sprite {
 
@@ -53,6 +48,7 @@ class Impostor extends Sprite {
 		this.renderer = renderer;
 		this.scene = scene;
 		this.visible = false;
+		this.lights = [];
 
 		this.scene.add( this );
 
@@ -173,22 +169,9 @@ class Impostor extends Sprite {
 		const fog = this.scene.fog;
 		this.scene.fog = null;
 
-		// set the camera on layer 31 to render only the forged object,
-		// then set it again on its initial value.
+		//
 
-		/*
-		const camMask = this.camera.layers.mask;
-		this.camera.layers.set( 31 );
-
-		// enable layer 31 on objects rendered for the impostor texture.
-
-		this._forged.traverse( child => child.layers.enable( 31 ) );
-		this.scene.traverse( (child) => {
-			if ( child.isLight ) child.layers.enable( 31 );
-		} );
-		*/
-
-		this.attachLights( this.scene );
+		this.attachLights();
 		
 		// make scene background transparent.
 
@@ -244,12 +227,9 @@ class Impostor extends Sprite {
 		this.visible = this._isForging;
 
 		this.scene.fog = fog;
-		// this.camera.layers.mask = camMask;
 		this.scene.background = sceneBackground;
 
 		this.camera.quaternion.copy( _q );
-
-		// this._forged.traverse( child => child.layers.disable( 31 ) );
 
 		this.camera.fov = camFov;
 		this.camera.aspect = camAspect;
@@ -288,39 +268,39 @@ class Impostor extends Sprite {
 
 	//
 
-	attachLights( source ) {
+	attachLights() {
 
-		for (var i = source.children.length - 1; i >= 0; i--) {
-			
-			this.attachLights( source.children[i] );
+		this.lights.forEach( light => {
 
-			if ( source.children[i].isLight ) {
+			light._originalParent = light.parent;
 
-				this._forged.attach( source.children[i] );
+			this._forged.attach( light );
 
-			}
-
-		}
+		} );
 
 	}
 
 	//
 
-	detachLights( source ) {
+	detachLights() {
 
-		source = source || this._forged;
+		this._forged.children.forEach( child => {
 
-		for (var i = source.children.length - 1; i >= 0; i--) {
+			if ( child.isLight ) {
 
-			this.detachLights( source.children[i] );
+				if ( child._originalParent ) {
 
-			if ( source.children[i].isLight ) {
+					child._originalParent.attach( child );
 
-				this.scene.attach( source.children[i] );
+				} else {
+
+					this.scene.attach( child );
+
+				}
 
 			}
 
-		}
+		} );
 
 	}
 
