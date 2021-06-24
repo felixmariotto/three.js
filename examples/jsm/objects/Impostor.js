@@ -9,8 +9,7 @@ import {
 	NearestFilter,
 	MathUtils,
 	PlaneGeometry,
-	MeshBasicMaterial,
-	DoubleSide
+	MeshBasicMaterial
 } from '../../../build/three.module.js';
 
 // TODO :
@@ -20,11 +19,15 @@ const _v1 = new Vector3();
 const _v2 = new Vector3();
 const _q = new Quaternion();
 
+const impostors = [];
+
+const MAX_UPDATES_PER_FRAME = 15;
+
 class Impostor extends Mesh {
 
 	constructor( object3D, camera, renderer, scene ) {
 
-		const DEFAULT_TEXTURE_SIZE = 512;
+		const DEFAULT_TEXTURE_SIZE = 64;
 
 		const renderTarget = new WebGLRenderTarget(
 			DEFAULT_TEXTURE_SIZE,
@@ -41,8 +44,7 @@ class Impostor extends Mesh {
 		super( geometry, new MeshBasicMaterial( {
 			map: renderTarget.texture,
 			color: 0xffffff,
-			transparent: true,
-			side: DoubleSide
+			transparent: true
 		} ) );
 
 		this.scale.set( 10, 10, 1 );
@@ -50,7 +52,7 @@ class Impostor extends Mesh {
 		this.renderTarget = renderTarget;
 		this.type = 'Impostor';
 		this.redrawInterval = null; // in ms, skipped if null.
-		this.impostureDistance = 70; // world distance.
+		this.impostureDistance = 110; // world distance.
 		this.maxAngle = 0.5;
 		this.camera = camera;
 		this.renderer = renderer;
@@ -71,8 +73,25 @@ class Impostor extends Mesh {
 		this._boundingSphere = new Sphere();
 		this._boundingSphereOffset = new Vector3();
 
-		// test
-		this.redraw();
+		//
+
+		impostors.push( this );
+
+	}
+
+	static updateAll() {
+
+		for ( let i=0 ; i<impostors.length ; i++ ) {
+
+			impostors[i].update();
+
+		}
+
+		impostors
+		.filter( i => i._mustRedraw )
+		.sort( ( a, b ) => a._lastDistToCam - b._lastDistToCam )
+		.filter( ( i, idx ) => idx < MAX_UPDATES_PER_FRAME )
+		.forEach( i => i.redraw() );
 
 	}
 
@@ -95,7 +114,9 @@ class Impostor extends Mesh {
 		// check the distance between the camera and the forged object,
 		// and update impostor/importored visibility accordingly.
 		
-		if ( _v1.distanceTo( _v2 ) > this.impostureDistance ) {
+		this._lastDistToCam = _v1.distanceTo( _v2 );
+
+		if ( this._lastDistToCam > this.impostureDistance ) {
 
 			this.setImposture();
 
@@ -106,7 +127,7 @@ class Impostor extends Mesh {
 
 			if ( _v1.angleTo( this._lastViewAngle ) > this.maxAngle ) {
 
-				this.redraw();
+				this._mustRedraw = true;
 
 			}
 
@@ -126,7 +147,7 @@ class Impostor extends Mesh {
 				( Date.now() - this.lastRedrawDate > this.redrawInterval )
 			) {
 
-				this.redraw();
+				this._mustRedraw = true;
 
 			}
 
@@ -145,7 +166,7 @@ class Impostor extends Mesh {
 
 			this._isForging = true;
 
-			this.redraw();
+			this._mustRedraw = true;
 
 		}
 
@@ -274,6 +295,10 @@ class Impostor extends Mesh {
 		this.camera.updateWorldMatrix( true, false );
 		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
 		this.lookAt( _v1 );
+
+		//
+
+		this._mustRedraw = false;
 
 	}
 

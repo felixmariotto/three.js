@@ -35,9 +35,8 @@
 			let camera, scene, raycaster, renderer, controls, stats;
 			let model;
 			const trucks = [];
-			const impostors = [];
 
-			const trucksNumber = 500;
+			const trucksNumber = 2000;
 			const sceneWidth = 200;
 
 			init();
@@ -116,8 +115,6 @@
 						const impostor = new Impostor( truck, camera, renderer, scene );
 						impostor.lights = lights;
 
-						impostors.push( impostor );
-
 					}
 
 				} );
@@ -145,13 +142,11 @@
 
 						truck.position.x = -sceneWidth;
 
-						truck._impostor.teleportFrame = renderer.info.render.frame;
-
 					}
 
 				} );
 
-				impostors.forEach( impostor => impostor.update() );
+				Impostor.updateAll();
 
 				renderer.render( scene, camera );
 
