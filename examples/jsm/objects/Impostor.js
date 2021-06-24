@@ -39,16 +39,24 @@ class Impostor extends Mesh {
 		);
 
 		const geometry = new PlaneGeometry( 1, 1 );
-
-		super( geometry, new MeshBasicMaterial( {
+		const material = new MeshBasicMaterial( {
 			map: renderTarget.texture,
 			color: 0xffffff,
-			transparent: true
-		} ) );
+			transparent: true,
+			polygonOffset: true,
+			polygonOffsetFactor: -50
+		} );
+
+		super( geometry, material );
 
 		this.scale.set( 10, 10, 1 );
 
+		//
+
 		this.renderTarget = renderTarget;
+		this.geometry = geometry;
+		this.material = material;
+
 		this.type = 'Impostor';
 		this.redrawInterval = null; // in ms, skipped if null.
 		this.impostureDistance = 110; // world distance.
