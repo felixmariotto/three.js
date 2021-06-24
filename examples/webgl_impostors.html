@@ -37,7 +37,7 @@
 			const trucks = [];
 			const impostors = [];
 
-			const trucksNumber = 2000;
+			const trucksNumber = 500;
 			const sceneWidth = 200;
 
 			init();
@@ -144,6 +144,8 @@
 					if ( truck.position.x > sceneWidth ) {
 
 						truck.position.x = -sceneWidth;
+
+						truck._impostor.teleportFrame = renderer.info.render.frame;
 
 					}
 

@@ -42,7 +42,7 @@ class Impostor extends Mesh {
 			map: renderTarget.texture,
 			color: 0xffffff,
 			transparent: true,
-			// side: DoubleSide
+			side: DoubleSide
 		} ) );
 
 		this.scale.set( 10, 10, 1 );
@@ -78,14 +78,22 @@ class Impostor extends Mesh {
 
 	update() {
 
-		// check the distance between the camera and the forged object,
-		// and update impostor/importored visibility accordingly.
+		// compute camera and forged object positions in world space.
 
 		this.camera.updateWorldMatrix( true, false );
 		this._forged.updateWorldMatrix( true, false );
 
 		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
 		_v2.setScalar( 0 ).applyMatrix4( this._forged.matrixWorld );
+
+		// move the impostor at the forged object position.
+
+		this.position
+		.copy( _v2 )
+		.add( this._boundingSphereOffset );
+
+		// check the distance between the camera and the forged object,
+		// and update impostor/importored visibility accordingly.
 		
 		if ( _v1.distanceTo( _v2 ) > this.impostureDistance ) {
 
@@ -123,12 +131,6 @@ class Impostor extends Mesh {
 			}
 
 		}
-
-		// move the impostor at the forged object position
-
-		this.position
-		.copy( _v2 )
-		.add( this._boundingSphereOffset );
 
 	}
 
@@ -199,7 +201,7 @@ class Impostor extends Mesh {
 		const camFov = this.camera.fov;
 		const camAspect = this.camera.aspect;
 
-		this.camera.updateWorldMatrix( false, false );
+		this.camera.updateWorldMatrix( true, false );
 		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
 		const distance = _v1.distanceTo( this._boundingSphere.center );
 		const targetAngle = 2 * Math.atan( this._boundingSphere.radius / distance );
@@ -269,14 +271,9 @@ class Impostor extends Mesh {
 
 		// make the plane orient towards the camera
 
-		
-
-		setTimeout( () => {
-			this.camera.updateWorldMatrix( true, false );
+		this.camera.updateWorldMatrix( true, false );
 		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
-			// this.lookAt( 0, 0, 0 );
-			this.lookAt( _v1 );
-		}, 10 )
+		this.lookAt( _v1 );
 
 	}
 
