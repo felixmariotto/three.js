@@ -58,6 +58,7 @@ class Impostor extends Mesh {
 		this.material = material;
 
 		this.type = 'Impostor';
+		this.enabled = true;
 		this.redrawInterval = null; // in ms, skipped if null.
 		this.impostureDistance = 110; // world distance.
 		this.maxAngle = 0.5;
@@ -123,7 +124,10 @@ class Impostor extends Mesh {
 		
 		this._lastDistToCam = _v1.distanceTo( _v2 );
 
-		if ( this._lastDistToCam > this.impostureDistance ) {
+		if (
+			this.enabled &&
+			this._lastDistToCam > this.impostureDistance
+		) {
 
 			this.setImposture();
 

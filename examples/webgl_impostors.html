@@ -36,6 +36,7 @@
 			let camera, scene, raycaster, renderer, controls, stats;
 
 			const cars = [];
+			const impostors = [];
 			const carsNumber = 700;
 			const sceneWidth = 400;
 
@@ -110,6 +111,8 @@
 
 						const impostor = new Impostor( car, camera, renderer, scene );
 
+						impostors.push( impostor );
+
 						// impostor options
 
 						impostor.lights = lights;
@@ -121,6 +124,65 @@
 						impostor.maxAngle = 0.3;
 
 					}
+
+				} );
+
+				// interactive GUI
+
+				const normalMaterial = new THREE.MeshNormalMaterial();
+
+				const params = {
+					enable: true,
+					show: false,
+					dist: 90
+				};
+
+				const gui = new GUI();
+
+				gui.add( params, 'enable' ).name( 'enable impostors' ).onChange( ( bool ) => {
+
+					if ( bool ) {
+
+						impostors.forEach( impostor => impostor.enabled = true );
+
+					} else {
+
+						impostors.forEach( impostor => impostor.enabled = false );
+
+					}
+
+				} );
+
+				gui.add( params, 'show' ).name( 'show impostors' ).onChange( ( bool ) => {
+
+					if ( bool ) {
+
+						impostors.forEach( impostor => {
+
+							impostor.userData.oldMaterial = impostor.material;
+							impostor.material = normalMaterial;
+
+						} );
+
+					} else {
+
+						impostors.forEach( impostor => {
+
+							impostor.material = impostor.userData.oldMaterial;
+
+						} );
+
+					}
+
+				} );
+
+				gui.add( params, 'dist', 20, 500 ).step( 1 ).name( 'min distance' ).onChange( ( val ) => {
+
+					impostors.forEach( impostor => {
+
+						impostor.impostureDistance = val;
+
+					} );
 
 				} );
 
