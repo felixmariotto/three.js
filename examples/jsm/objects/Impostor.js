@@ -332,19 +332,15 @@ class Impostor extends Mesh {
 
 	detachLights() {
 
-		this._forged.children.forEach( child => {
+		this.lights.forEach( light => {
 
-			if ( child.isLight ) {
+			if ( light._originalParent ) {
 
-				if ( child._originalParent ) {
+				light._originalParent.attach( light );
 
-					child._originalParent.attach( child );
+			} else {
 
-				} else {
-
-					this.scene.attach( child );
-
-				}
+				this.scene.attach( light );
 
 			}
 
