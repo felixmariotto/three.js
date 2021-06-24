@@ -29,6 +29,7 @@
 			import { GUI } from './jsm/libs/dat.gui.module.js';
 			import { OrbitControls } from './jsm/controls/OrbitControls.js';
 			import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+			import { DRACOLoader } from './jsm/loaders/DRACOLoader.js';
 
 			import { Impostor } from './jsm/objects/Impostor.js';
 
@@ -36,8 +37,8 @@
 			let model;
 			const trucks = [];
 
-			const trucksNumber = 2000;
-			const sceneWidth = 200;
+			const trucksNumber = 500;
+			const sceneWidth = 150;
 
 			init();
 			animate();
@@ -90,9 +91,14 @@
 
 				// trucks and impostors setup
 
-				const loader = new GLTFLoader();
+				const dracoLoader = new DRACOLoader();
+				dracoLoader.setDecoderPath( 'js/libs/draco/gltf/' );
 
-				loader.load( './models/gltf/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb', (gltf) => {
+				const loader = new GLTFLoader();
+				loader.setDRACOLoader( dracoLoader );
+
+				// loader.load( './models/gltf/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb', (gltf) => {
+				loader.load( './models/gltf/ferrari.glb', (gltf) => {
 
 					model = gltf.scene;
 
@@ -106,6 +112,8 @@
 							Math.random() * sceneWidth * 2 - sceneWidth
 						);
 
+						truck.rotation.y = -Math.PI / 2;
+
 						truck.direction = Math.random() * 0.2 + 0.3;
 
 						scene.add( truck );
@@ -114,6 +122,7 @@
 
 						const impostor = new Impostor( truck, camera, renderer, scene );
 						impostor.lights = lights;
+						impostor.impostureDistance = 50;
 
 					}
 

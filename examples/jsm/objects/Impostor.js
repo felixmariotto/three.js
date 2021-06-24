@@ -21,13 +21,12 @@ const _q = new Quaternion();
 
 const impostors = [];
 
-const MAX_UPDATES_PER_FRAME = 15;
+const DEFAULT_TEXTURE_SIZE = 128;
+const MAX_UPDATES_PER_FRAME = 10;
 
 class Impostor extends Mesh {
 
 	constructor( object3D, camera, renderer, scene ) {
-
-		const DEFAULT_TEXTURE_SIZE = 64;
 
 		const renderTarget = new WebGLRenderTarget(
 			DEFAULT_TEXTURE_SIZE,
@@ -270,8 +269,10 @@ class Impostor extends Mesh {
 
 		this.camera.updateWorldMatrix( true, false );
 		this._forged.updateWorldMatrix( true, false );
+		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
+		_v2.setScalar( 0 ).applyMatrix4( this._forged.matrixWorld );
 
-		this._lastViewAngle.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
+		this._lastViewAngle.copy( _v1 );
 		this._forged.worldToLocal( this._lastViewAngle );
 		this._lastViewAngle.normalize();
 
@@ -284,16 +285,11 @@ class Impostor extends Mesh {
 		// on the object geometry and we want to move the impostor each from
 		// to match the object position.
 
-		this._forged.updateWorldMatrix( false, false );
-		_v2.setScalar( 0 ).applyMatrix4( this._forged.matrixWorld );
-
 		this._boundingSphereOffset.copy( this._boundingSphere.center );
 		this._boundingSphereOffset.sub( _v2 );
 
 		// make the plane orient towards the camera
 
-		this.camera.updateWorldMatrix( true, false );
-		_v1.setScalar( 0 ).applyMatrix4( this.camera.matrixWorld );
 		this.lookAt( _v1 );
 
 		//
