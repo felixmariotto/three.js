@@ -34,10 +34,9 @@
 			import { Impostor } from './jsm/objects/Impostor.js';
 
 			let camera, scene, raycaster, renderer, controls, stats;
-			let model;
-			const trucks = [];
 
-			const trucksNumber = 700;
+			const cars = [];
+			const carsNumber = 700;
 			const sceneWidth = 400;
 
 			init();
@@ -55,7 +54,6 @@
 				scene.fog = new THREE.Fog( new THREE.Color( 0xf0f0f0 ), sceneWidth / 4, sceneWidth );
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.body.appendChild( renderer.domElement );
 
@@ -74,56 +72,52 @@
 
 				scene.add( hemLight, directionalLight );
 
+				// we will need to pass the list of lights to the impostors
 				const lights = [ hemLight, directionalLight ];
 
 				// ground plane
 
-				const planeGeometry = new THREE.PlaneGeometry( sceneWidth * 2, sceneWidth * 2 );
-				planeGeometry.rotateX( -Math.PI / 2 );
+				const groundGeometry = new THREE.PlaneGeometry( sceneWidth * 2, sceneWidth * 2 );
+				const groundMaterial = new THREE.MeshStandardMaterial({ color: 'grey' });
+				const groundMesh = new THREE.Mesh( groundGeometry, groundMaterial );
+				groundMesh.rotation.x = -Math.PI / 2;
+				scene.add( groundMesh );
 
-				const planeMaterial = new THREE.MeshStandardMaterial({
-					color: new THREE.Color( 0x444444 )
-				});
+				// cars and impostors setup
 
-				const planeMesh = new THREE.Mesh( planeGeometry, planeMaterial );
+				const dracoLoader = new DRACOLoader().setDecoderPath( 'js/libs/draco/gltf/' );
+				const loader = new GLTFLoader().setDRACOLoader( dracoLoader );
 
-				scene.add( planeMesh );
-
-				// trucks and impostors setup
-
-				const dracoLoader = new DRACOLoader();
-				dracoLoader.setDecoderPath( 'js/libs/draco/gltf/' );
-
-				const loader = new GLTFLoader();
-				loader.setDRACOLoader( dracoLoader );
-
-				// loader.load( './models/gltf/CesiumMilkTruck/glTF-Binary/CesiumMilkTruck.glb', (gltf) => {
 				loader.load( './models/gltf/ferrari.glb', (gltf) => {
 
-					model = gltf.scene;
+					for ( let i=0 ; i<carsNumber ; i++ ) {
 
-					for ( let i=0 ; i<trucksNumber ; i++ ) {
+						const car = gltf.scene.clone();
 
-						const truck = model.clone();
-
-						truck.position.set(
+						car.position.set(
 							Math.random() * sceneWidth * 2 - sceneWidth,
 							0,
 							Math.random() * sceneWidth * 2 - sceneWidth
 						);
 
-						truck.rotation.y = -Math.PI / 2;
+						car.rotation.y = -Math.PI / 2;
+						car.direction = Math.random() * 0.1 + 0.15;
 
-						truck.direction = Math.random() * 0.1 + 0.15;
+						scene.add( car );
+						cars.push( car );
 
-						scene.add( truck );
+						/* IMPOSTOR CODE */
 
-						trucks.push( truck );
+						const impostor = new Impostor( car, camera, renderer, scene );
 
-						const impostor = new Impostor( truck, camera, renderer, scene );
+						// impostor options
+
 						impostor.lights = lights;
+
 						impostor.impostureDistance = 90;
+
 						impostor.setSize( 128 );
+
 						impostor.maxAngle = 0.3;
 
 					}
@@ -145,13 +139,13 @@
 
 				requestAnimationFrame( animate, renderer.domElement );
 
-				trucks.forEach( (truck) => {
+				cars.forEach( (car) => {
 
-					truck.position.x += truck.direction;
+					car.position.x += car.direction;
 
-					if ( truck.position.x > sceneWidth ) {
+					if ( car.position.x > sceneWidth ) {
 
-						truck.position.x = -sceneWidth;
+						car.position.x = -sceneWidth;
 
 					}
 
