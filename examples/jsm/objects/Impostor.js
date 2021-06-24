@@ -21,7 +21,7 @@ const _q = new Quaternion();
 
 const impostors = [];
 
-const DEFAULT_TEXTURE_SIZE = 128;
+const DEFAULT_TEXTURE_SIZE = 64;
 const MAX_UPDATES_PER_FRAME = 10;
 
 class Impostor extends Mesh {
@@ -149,6 +149,22 @@ class Impostor extends Mesh {
 				this._mustRedraw = true;
 
 			}
+
+		}
+
+	}
+
+	//
+
+	setSize( width ) {
+
+		if ( Math.log2( width ) % 1 !== 0 ) {
+
+			console.warn( 'Impostor.setSize: width must be power of two.' )
+
+		} else {
+
+			this.renderTarget.setSize( width, width );
 
 		}
 
